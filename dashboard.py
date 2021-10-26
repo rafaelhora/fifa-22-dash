@@ -3,7 +3,7 @@ import numpy as np
 import streamlit as st
 import matplotlib.pyplot as plt
 import seaborn as sns
-import chart_studio.plotly as py
+#import chart_studio.plotly as py
 import cufflinks as cf
 import plotly.express as px
 
