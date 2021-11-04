@@ -39,7 +39,10 @@ def get_data():
     df['Value'] = df['Value'].replace({'€': '', ',': '', 'K':'000', 'M':'000000', '\.':''}, regex=True).astype(float)
     df['Weight'] = df['Weight'].replace({'kg':''}, regex=True).astype(float)
     df['Height'] = df['Height'].replace({'cm':''}, regex=True).astype(float)
-
+    df['Wage'] = df['Wage']/1000
+    df['Release Clause'] = df['Release Clause']/1000000
+    df['Value'] = df['Value']/1000000
+    
     return df, df_extra_info
 
 
@@ -50,20 +53,25 @@ st.sidebar.download_button("Download Raw Dataset",data='FIFA22_official_data.csv
 
 
 # total value of club roster
-def club_value():
+def all_clubs_value():
     values = df.groupby('Club', as_index=False).sum()[['Club','Value']].reset_index()
     values = values.sort_values('Value', ascending = False).iloc[:10]
     values.set_index('Club', inplace=True)
     return values
 
 # total club monthly wage
-def club_wage():
+def all_clubs_wage():
     wages = df.groupby('Club', as_index=False).sum()[['Club','Wage']].reset_index()
     wages = wages.sort_values('Wage', ascending = False).iloc[:10]
     wages.set_index('Club', inplace=True)
     return wages
 
 #show most promising players
+
+# Apps
+
+## Show most promising players
+
 def most_promising(wage_range, value_range, age_range, current_rating_range, potential_range, future_growth_range, player_position, top_n):
     promising_players = df[['ID', 'Name', 'Age','Club','Best Position','Best Overall Rating', 'Potential','Value', 'Wage']]
     promising_players['future_growth'] = promising_players['Potential'] - promising_players['Best Overall Rating']
@@ -78,19 +86,6 @@ def most_promising(wage_range, value_range, age_range, current_rating_range, pot
     promising_players = promising_players.iloc[:int(top_n)]
     return promising_players
 
-
-# Apps
-
-## View Roster
-
-#top 10 roster value
-#club_value_fig = px.bar(club_value(), y = 'Value')
-#st.plotly_chart(club_value_fig)
-
-#top 10 total wages
-#club_wage_fig = px.bar(club_wage(), y='Wage')
-#st.plotly_chart(club_wage_fig)
-
 ## Most promising players
 '''
 ## Most promising Players
@@ -98,8 +93,8 @@ def most_promising(wage_range, value_range, age_range, current_rating_range, pot
 #columns
 col1, col2 = st.columns(2)
 with col1:
-    wage_range = st.slider("Wage Range", min(df.Wage), max(df.Wage),(min(df.Wage), max(df.Wage)), step = 500.0, format = '%d')
-    value_range = st.slider("Value Range", min(df.Value), max(df.Value),(min(df.Value), max(df.Value)), step = 50000.0, format = '%d')
+    wage_range = st.slider("Wage Range (in €1K)", min(df.Wage), max(df.Wage),(min(df.Wage), max(df.Wage)), step = 0.5, format = '%f')
+    value_range = st.slider("Value Range (in €1MM)", min(df.Value), max(df.Value),(min(df.Value), max(df.Value)), step = 0.5, format = '%f')
     age_range = st.slider("Age Range", min(df.Age), max(df.Age),(min(df.Age), max(df.Age)))
     player_position = st.multiselect("Player Best Postition", options = df['Best Position'].unique(), default = df['Best Position'].unique())
 with col2:
@@ -116,3 +111,53 @@ df_most_promising = most_promising(wage_range, value_range, age_range, current_r
 
 st.dataframe(df_most_promising.style.highlight_max(axis = 0, color = 'green').hide_index())
 st.download_button('Download data', df_most_promising.to_csv())
+
+
+## Show club details
+
+st.empty()
+
+#returns the overview of a club's information
+def view_club(df, club):
+    
+    df_club = df[df['Club'] == club]
+    
+    club_value = str(float('%.2f' % df_club['Value'].sum()))
+    club_value = '€ ' + club_value + 'MM'
+    
+    club_wage = str(float('%.2f' % df_club['Wage'].sum()))
+    club_wage = '€ ' + club_wage + 'K'
+    
+    club_avg_age = float('%.2f' % df_club['Age'].mean())
+    club_avg_rating = float('%.2f' % df_club['Best Overall Rating'].mean())
+    
+    club_avg_value = str(float('%.2f' % df_club['Value'].mean()))
+    club_avg_value = '€ ' + club_avg_value + 'MM'
+    
+    club_avg_wage = str(float('%.2f' % df_club['Wage'].mean()))
+    club_avg_wage = '€ ' + club_avg_wage + 'K'
+    
+    return club_value, club_wage, club_avg_age, club_avg_rating, club_avg_wage, club_avg_value, df_club
+
+'''
+## League Overview
+'''
+
+club = st.selectbox('Select a team', options = df.Club.unique())
+
+club_value, club_wage, club_avg_age, club_avg_rating, club_avg_wage, club_avg_value, df_club = view_club(df, club)
+
+col3, col4, col5 = st.columns(3)
+
+st.write('###', club)
+with col3:
+    st.metric('Total Roster Value', club_value)
+    st.metric('Total Wage Cost', club_wage)
+with col4:
+    st.metric('Average Player Wage', club_avg_wage)
+    st.metric('Average Player Value', club_avg_value)
+with col5:
+    st.metric('Average Player Wage', club_avg_age)
+    st.metric('Average Player Rating', club_avg_rating)
+
+st.dataframe(df_club)
